@@ -41,8 +41,8 @@ export async function GET() {
     const startOfMonth = getStartOfMonth();
     const endOfMonth = getEndOfMonth();
 
-    const budgetsWithSpent = allBudgets.map((budget) => {
-      const spent = db
+    const budgetsWithSpent = await Promise.all(allBudgets.map(async (budget) => {
+      const spentTxs = await db
         .select({ amount: transactions.amount })
         .from(transactions)
         .where(
@@ -54,11 +54,12 @@ export async function GET() {
             lte(transactions.transactionDate, budget.period === "monthly" ? endOfMonth : budget.endDate)
           )
         )
-        .all()
-        .reduce((sum, t) => sum + t.amount, 0);
+        .all();
+
+      const spent = spentTxs.reduce((sum, t) => sum + t.amount, 0);
 
       return { ...budget, spent };
-    });
+    }));
 
     return NextResponse.json(budgetsWithSpent);
   } catch {
