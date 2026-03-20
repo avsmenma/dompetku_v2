@@ -29,6 +29,7 @@ export default function TransactionsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState(initialType);
+  const [periodFilter, setPeriodFilter] = useState("month");
   const [form, setForm] = useState({ ...defaultForm, type: initialType === "all" ? "expense" : initialType });
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
@@ -107,9 +108,19 @@ export default function TransactionsPage() {
     await loadData();
   };
 
-  const filtered = transactions.filter(t =>
-    filter === "all" ? t.type !== "transfer" : t.type === filter
-  );
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const yearStr = `${now.getFullYear()}`;
+
+  const filtered = transactions.filter(t => {
+    const typeOk = filter === "all" ? t.type !== "transfer" : t.type === filter;
+    let periodOk = true;
+    if (periodFilter === "today") periodOk = t.transactionDate === todayStr;
+    else if (periodFilter === "month") periodOk = t.transactionDate.startsWith(monthStr);
+    else if (periodFilter === "year") periodOk = t.transactionDate.startsWith(yearStr);
+    return typeOk && periodOk;
+  });
   const filteredCategories = categories.filter(c => c.type === form.type);
   const accountMap = Object.fromEntries(accounts.map(a => [a.id!, a]));
 
@@ -126,6 +137,20 @@ export default function TransactionsPage() {
         {[["all", "Semua"], ["income", "Pemasukan"], ["expense", "Pengeluaran"]].map(([val, label]) => (
           <button key={val} onClick={() => setFilter(val)}
             className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${filter === val ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Period Filter */}
+      <div className="flex gap-1.5">
+        {([["today", "Hari Ini"], ["month", "Bulan Ini"], ["year", "Tahun Ini"], ["all", "Semua"]] as [string,string][]).map(([val, label]) => (
+          <button key={val} onClick={() => setPeriodFilter(val)}
+            className={`flex-1 py-1.5 text-[11px] font-medium rounded-lg border transition-colors ${
+              periodFilter === val
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-border text-muted-foreground bg-background hover:bg-muted"
+            }`}>
             {label}
           </button>
         ))}

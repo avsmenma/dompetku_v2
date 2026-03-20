@@ -1,0 +1,52 @@
+warning: in the working copy of 'app/(auth)/login/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(auth)/register/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/accounts/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/budgets/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/dashboard/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/layout.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/profile/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/reports/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/transactions/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/transfer/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/db/local.ts', LF will be replaced by CRLF the next time Git touches it
+[main 60cfae8] Feat: Migrate to local-first IndexedDB (Dexie.js) GÇö remove server auth and all API routes
+ 48 files changed, 953 insertions(+), 1062 deletions(-)
+ create mode 100644 add3.txt
+ create mode 100644 add4.txt
+ create mode 100644 add5.txt
+ create mode 100644 add6.txt
+ create mode 100644 add7.txt
+ create mode 100644 add8.txt
+ create mode 100644 add9.txt
+ create mode 100644 add_out.txt
+ create mode 100644 all_diffs.txt
+ delete mode 100644 app/api/accounts/route.ts
+ delete mode 100644 app/api/auth/login/route.ts
+ delete mode 100644 app/api/auth/logout/route.ts
+ delete mode 100644 app/api/auth/me/route.ts
+ delete mode 100644 app/api/auth/register/route.ts
+ delete mode 100644 app/api/budgets/route.ts
+ delete mode 100644 app/api/categories/route.ts
+ delete mode 100644 app/api/transactions/route.ts
+ create mode 100644 commit_out.txt
+ create mode 100644 diff_output.txt
+ create mode 100644 final_log.txt
+ create mode 100644 git_log.txt
+ create mode 100644 git_log2.txt
+ create mode 100644 iconcheck2.txt
+ create mode 100644 imgsize.txt
+ create mode 100644 lib/db/local.ts
+ create mode 100644 log3.txt
+ create mode 100644 npm_install.txt
+ create mode 100644 push2.txt
+ create mode 100644 push_out.txt
+ create mode 100644 remote_info.txt
+ rename app/api/reports/route.ts => reports_remote.txt (96%)
+ create mode 100644 status3.txt
+ create mode 100644 status_out.txt
+ create mode 100644 tsc_output.txt
+To https://github.com/avsmenma/dompetku_v2.git
+   194970e..60cfae8  main -> main

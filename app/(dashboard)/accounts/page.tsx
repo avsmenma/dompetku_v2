@@ -16,6 +16,16 @@ import { AccountLogo } from "@/components/ui/account-logo";
 const COLORS = ["#6366f1","#8b5cf6","#ec4899","#ef4444","#f97316","#eab308","#22c55e","#10b981","#06b6d4","#3b82f6"];
 const defaultForm = { name: "", type: "cash" as "cash"|"bank"|"ewallet", currentBalance: "", currency: "IDR", color: "#6366f1" };
 
+// Format angka dengan titik sebagai pemisah ribuan
+function formatBalanceInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  return Number(digits).toLocaleString("id-ID");
+}
+function parseBalanceInput(formatted: string): string {
+  return formatted.replace(/\./g, "");
+}
+
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,8 +165,20 @@ export default function AccountsPage() {
             {!editAccount && (
               <div className="space-y-1.5">
                 <Label>Saldo Awal (Rp)</Label>
-                <Input type="number" placeholder="0" value={form.currentBalance}
-                onChange={(e) => setForm({ ...form, currentBalance: e.target.value })} />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Rp</span>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={formatBalanceInput(form.currentBalance)}
+                    onChange={(e) => {
+                      const raw = parseBalanceInput(e.target.value);
+                      setForm({ ...form, currentBalance: raw });
+                    }}
+                    className="pl-9"
+                  />
+                </div>
               </div>
             )}
             <div className="space-y-1.5">

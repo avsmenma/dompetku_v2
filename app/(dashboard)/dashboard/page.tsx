@@ -67,7 +67,10 @@ export default function DashboardPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+const BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+
   const totalWealth = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
+  const currentMonthName = BULAN[new Date().getMonth()];
 
   if (loading) {
     return (
@@ -114,7 +117,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/20">
             <div>
               <div className="flex items-center gap-1 text-violet-200 text-xs mb-1">
-                <TrendingUp className="h-3 w-3" /><span>Pemasukan Bulan Ini</span>
+                <TrendingUp className="h-3 w-3" /><span>Pemasukan Bulan {currentMonthName}</span>
               </div>
               <p className="font-semibold text-sm">
                 {showBalance ? formatCurrency(totalIncome) : "Rp ••••"}
@@ -122,7 +125,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <div className="flex items-center gap-1 text-violet-200 text-xs mb-1">
-                <TrendingDown className="h-3 w-3" /><span>Pengeluaran Bulan Ini</span>
+                <TrendingDown className="h-3 w-3" /><span>Pengeluaran Bulan {currentMonthName}</span>
               </div>
               <p className="font-semibold text-sm">
                 {showBalance ? formatCurrency(totalExpense) : "Rp ••••"}
