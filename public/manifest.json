@@ -16,7 +16,7 @@
   "screenshots": [
     {
       "src": "/screenshots/dashboard.png",
-      "sizes": "1080x1920",
+      "sizes": "540x960",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Dashboard Dompetku"

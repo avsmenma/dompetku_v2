@@ -1,17 +1,14 @@
 const CACHE_NAME = 'dompetku-v2';
-const OFFLINE_URL = '/dashboard';
+const OFFLINE_URL = '/';
 
-// Assets to pre-cache on install
+// Only cache public static assets — never auth-required routes!
 const PRECACHE_ASSETS = [
   '/',
-  '/dashboard',
-  '/accounts',
-  '/transactions',
-  '/budgets',
-  '/reports',
-  '/transfer',
-  '/profile',
   '/manifest.json',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/icon-384.png',
+  '/icons/icon-128.png',
 ];
 
 // Install event — pre-cache app shell
