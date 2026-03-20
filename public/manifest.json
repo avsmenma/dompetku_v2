@@ -1,7 +1,9 @@
 {
+  "id": "com.dompetku.app",
   "name": "Dompetku - Catat Keuangan",
   "short_name": "Dompetku",
   "description": "Aplikasi pencatatan keuangan pribadi lokal",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -10,6 +12,16 @@
   "orientation": "portrait",
   "lang": "id",
   "categories": ["finance", "utilities"],
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dashboard Dompetku"
+    }
+  ],
   "icons": [
     {
       "src": "/icons/icon-48.png",
