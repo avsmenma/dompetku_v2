@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { formatCurrency, getStartOfMonth, getEndOfMonth, getAccountTypeLabel } from "@/lib/utils";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { AccountLogo } from "@/components/ui/account-logo";
 
 interface Account {
   id: number; name: string; type: string;
@@ -179,12 +180,7 @@ export default function DashboardPage() {
             visibleAccounts.map((acc) => (
               <div key={acc.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
-                    style={{ backgroundColor: acc.color }}
-                  >
-                    {acc.name.charAt(0).toUpperCase()}
-                  </div>
+                  <AccountLogo name={acc.name} color={acc.color} size="sm" />
                   <div>
                     <p className="font-medium text-sm">{acc.name}</p>
                     <Badge variant="secondary" className="text-[10px] h-4 px-1.5">

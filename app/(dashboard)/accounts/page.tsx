@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Eye, EyeOff, Wallet, Loader2 } from "lucide-react";
+import { AccountLogo } from "@/components/ui/account-logo";
 import { formatCurrency, getAccountTypeLabel } from "@/lib/utils";
 
 interface Account {
@@ -109,10 +110,7 @@ export default function AccountsPage() {
           {sorted.map((acc) => (
             <Card key={acc.id} className={`border-0 shadow-sm ${acc.isHidden ? "opacity-60" : ""}`}>
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
-                  style={{ backgroundColor: acc.color }}>
-                  {acc.name.charAt(0).toUpperCase()}
-                </div>
+                <AccountLogo name={acc.name} color={acc.color} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold truncate">{acc.name}</p>
