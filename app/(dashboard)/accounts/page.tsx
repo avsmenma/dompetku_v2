@@ -14,7 +14,7 @@ import { localDb, type Account } from "@/lib/db/local";
 import { AccountLogo } from "@/components/ui/account-logo";
 
 const COLORS = ["#6366f1","#8b5cf6","#ec4899","#ef4444","#f97316","#eab308","#22c55e","#10b981","#06b6d4","#3b82f6"];
-const defaultForm = { name: "", type: "cash" as "cash"|"bank"|"ewallet", currentBalance: 0, currency: "IDR", color: "#6366f1" };
+const defaultForm = { name: "", type: "cash" as "cash"|"bank"|"ewallet", currentBalance: "", currency: "IDR", color: "#6366f1" };
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -22,12 +22,15 @@ export default function AccountsPage() {
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
-  const [form, setForm] = useState(defaultForm);
+  const [form, setForm] = useState<typeof defaultForm>(defaultForm);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const loadAccounts = useCallback(async () => {
-    const accs = await localDb.accounts.orderBy("priorityOrder").toArray();
+    try {
+    const accs = await localDb.accounts.toArray();
+    accs.sort((a, b) => a.priorityOrder - b.priorityOrder);
     setAccounts(accs);
+    } catch (e) { console.error("loadAccounts error", e); }
     setLoading(false);
   }, []);
 
@@ -36,7 +39,7 @@ export default function AccountsPage() {
   const openAdd = () => { setEditAccount(null); setForm(defaultForm); setOpen(true); };
   const openEdit = (acc: Account) => {
     setEditAccount(acc);
-    setForm({ name: acc.name, type: acc.type, currentBalance: acc.currentBalance, currency: acc.currency, color: acc.color });
+    setForm({ name: acc.name, type: acc.type, currentBalance: String(acc.currentBalance), currency: acc.currency, color: acc.color });
     setOpen(true);
   };
 
@@ -50,8 +53,9 @@ export default function AccountsPage() {
       } else {
         const count = await localDb.accounts.count();
         await localDb.accounts.add({
-          name: form.name, type: form.type, currentBalance: form.currentBalance,
+          name: form.name, type: form.type,
           currency: form.currency, color: form.color, isHidden: false,
+          currentBalance: Number(form.currentBalance) || 0,
           priorityOrder: count, createdAt: new Date().toISOString(),
         });
       }
@@ -152,7 +156,7 @@ export default function AccountsPage() {
               <div className="space-y-1.5">
                 <Label>Saldo Awal (Rp)</Label>
                 <Input type="number" placeholder="0" value={form.currentBalance}
-                  onChange={(e) => setForm({ ...form, currentBalance: Number(e.target.value) })} />
+                onChange={(e) => setForm({ ...form, currentBalance: e.target.value })} />
               </div>
             )}
             <div className="space-y-1.5">
