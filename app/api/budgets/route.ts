@@ -19,7 +19,7 @@ export async function GET() {
     initializeDatabase();
     const session = await requireAuth();
 
-    const allBudgets = db
+    const allBudgets = await db
       .select({
         id: budgets.id,
         userId: budgets.userId,
