@@ -14,8 +14,6 @@ const client = createClient({
 export const db = drizzle(client, { schema });
 
 export async function initializeDatabase() {
-  if (!isDev) return;
-
   try {
     await client.execute(`
       CREATE TABLE IF NOT EXISTS users (
