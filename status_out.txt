@@ -1,0 +1,25 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app/api/accounts/route.ts
+	modified:   app/api/auth/login/route.ts
+	modified:   app/api/auth/register/route.ts
+	modified:   app/api/budgets/route.ts
+	modified:   app/api/categories/route.ts
+	modified:   app/api/reports/route.ts
+	modified:   app/api/transactions/route.ts
+	modified:   tsconfig.tsbuildinfo
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	diff_output.txt
+	git_log.txt
+	git_log2.txt
+	remote_info.txt
+	reports_remote.txt
+	tsc_output.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")

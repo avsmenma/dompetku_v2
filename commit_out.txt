@@ -1,0 +1,2 @@
+[main 5b41657] Fix: Add missing await for initializeDatabase and db queries across all API routes
+ 7 files changed, 23 insertions(+), 28 deletions(-)

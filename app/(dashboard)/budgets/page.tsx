@@ -10,16 +10,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, PieChart, Loader2, AlertTriangle } from "lucide-react";
 import { formatCurrency, getStartOfMonth, getEndOfMonth } from "@/lib/utils";
+import { localDb, type Category, type Budget } from "@/lib/db/local";
 
-interface Category { id: number; name: string; type: string; icon: string; color: string; }
-interface Budget {
-  id: number; categoryId: number; limitAmount: number; period: string;
-  startDate: string; endDate: string; categoryName: string | null;
-  categoryColor: string | null; categoryIcon: string | null; spent: number;
+interface BudgetWithSpent extends Budget {
+  categoryName?: string;
+  categoryColor?: string;
+  spent: number;
 }
 
 export default function BudgetsPage() {
-  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [budgets, setBudgets] = useState<BudgetWithSpent[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -31,12 +31,25 @@ export default function BudgetsPage() {
   });
 
   const loadData = useCallback(async () => {
-    const [budgetsRes, catsRes] = await Promise.all([
-      fetch("/api/budgets"),
-      fetch("/api/categories"),
+    const [rawBudgets, cats, txs] = await Promise.all([
+      localDb.budgets.toArray(),
+      localDb.categories.toArray(),
+      localDb.transactions.where("transactionDate").between(getStartOfMonth(), getEndOfMonth(), true, true).toArray(),
     ]);
-    if (budgetsRes.ok) setBudgets(await budgetsRes.json());
-    if (catsRes.ok) setCategories((await catsRes.json()).filter((c: Category) => c.type === "expense"));
+    const catMap = Object.fromEntries(cats.map(c => [c.id!, c]));
+    // Calculate spent per category
+    const spentMap: Record<number, number> = {};
+    txs.filter(t => t.type === "expense" && t.categoryId).forEach(t => {
+      spentMap[t.categoryId!] = (spentMap[t.categoryId!] || 0) + t.amount;
+    });
+    const enriched: BudgetWithSpent[] = rawBudgets.map(b => ({
+      ...b,
+      categoryName: catMap[b.categoryId]?.name,
+      categoryColor: catMap[b.categoryId]?.color,
+      spent: spentMap[b.categoryId] || 0,
+    }));
+    setBudgets(enriched);
+    setCategories(cats.filter(c => c.type === "expense"));
     setLoading(false);
   }, []);
 
@@ -46,15 +59,13 @@ export default function BudgetsPage() {
     if (!form.categoryId || !form.limitAmount) return;
     setSaving(true);
     try {
-      await fetch("/api/budgets", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          categoryId: Number(form.categoryId),
-          limitAmount: Number(form.limitAmount),
-          period: form.period,
-          startDate: form.startDate,
-          endDate: form.endDate,
-        }),
+      await localDb.budgets.add({
+        categoryId: Number(form.categoryId),
+        limitAmount: Number(form.limitAmount),
+        period: form.period as "monthly" | "weekly",
+        startDate: form.startDate,
+        endDate: form.endDate,
+        createdAt: new Date().toISOString(),
       });
       setOpen(false);
       setForm({ categoryId: "", limitAmount: "", period: "monthly", startDate: getStartOfMonth(), endDate: getEndOfMonth() });
@@ -64,7 +75,7 @@ export default function BudgetsPage() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    await fetch(`/api/budgets?id=${deleteId}`, { method: "DELETE" });
+    await localDb.budgets.delete(deleteId);
     setDeleteId(null);
     await loadData();
   };
@@ -84,7 +95,6 @@ export default function BudgetsPage() {
         </Button>
       </div>
 
-      {/* Summary */}
       {budgets.length > 0 && (
         <Card className="bg-gradient-to-br from-violet-600 to-purple-700 text-white border-0">
           <CardContent className="p-5">
@@ -134,7 +144,9 @@ export default function BudgetsPage() {
                       </div>
                       <div>
                         <p className="font-semibold text-sm">{budget.categoryName || "Kategori"}</p>
-                        <p className="text-[10px] text-muted-foreground capitalize">{budget.period === "monthly" ? "Per Bulan" : "Per Minggu"}</p>
+                        <p className="text-[10px] text-muted-foreground capitalize">
+                          {budget.period === "monthly" ? "Per Bulan" : "Per Minggu"}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -142,22 +154,18 @@ export default function BudgetsPage() {
                         <AlertTriangle className={`h-4 w-4 ${isOver ? "text-destructive" : "text-yellow-500"}`} />
                       )}
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => setDeleteId(budget.id)}>
+                        onClick={() => setDeleteId(budget.id!)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
-
                   <Progress value={pct}
                     className={`h-2 mb-2 ${isOver ? "[&>div]:bg-destructive" : isNear ? "[&>div]:bg-yellow-500" : ""}`} />
-
                   <div className="flex justify-between text-xs">
                     <span className={isOver ? "text-destructive font-semibold" : "text-muted-foreground"}>
                       {isOver ? "Over budget!" : `${formatCurrency(budget.spent)} digunakan`}
                     </span>
-                    <span className="text-muted-foreground">
-                      dari {formatCurrency(budget.limitAmount)}
-                    </span>
+                    <span className="text-muted-foreground">dari {formatCurrency(budget.limitAmount)}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -166,7 +174,6 @@ export default function BudgetsPage() {
         </div>
       )}
 
-      {/* Add Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm mx-4">
           <DialogHeader><DialogTitle>Tambah Budget</DialogTitle></DialogHeader>
@@ -205,7 +212,6 @@ export default function BudgetsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirm */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent className="max-w-sm mx-4">
           <DialogHeader><DialogTitle>Hapus Budget?</DialogTitle></DialogHeader>

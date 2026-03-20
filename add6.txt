@@ -1,0 +1,6 @@
+warning: in the working copy of 'public/manifest.json', LF will be replaced by CRLF the next time Git touches it
+[main 6ca042d] Fix: Add id, dir, display_override, screenshots to PWA manifest for PWABuilder
+ 2 files changed, 12 insertions(+)
+ create mode 100644 public/screenshots/dashboard.png
+To https://github.com/avsmenma/dompetku_v2.git
+   1e213bd..6ca042d  main -> main

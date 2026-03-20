@@ -1,0 +1,8 @@
+warning: in the working copy of 'app/(dashboard)/accounts/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/(dashboard)/dashboard/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/ui/account-logo.tsx', LF will be replaced by CRLF the next time Git touches it
+[main 1e213bd] Feat: Add bank/e-wallet logos to account display (BCA, BRI, BNI, Mandiri, CIMB, Jago, BSI, GoPay, OVO, DANA, ShopeePay)
+ 3 files changed, 191 insertions(+), 10 deletions(-)
+ create mode 100644 components/ui/account-logo.tsx
+To https://github.com/avsmenma/dompetku_v2.git
+   3df5edd..1e213bd  main -> main

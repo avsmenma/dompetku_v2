@@ -1,0 +1,192 @@
+warning: in the working copy of 'app/api/accounts/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/auth/login/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/auth/register/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/budgets/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/categories/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/transactions/route.ts', LF will be replaced by CRLF the next time Git touches it
+diff --git a/app/api/accounts/route.ts b/app/api/accounts/route.ts
+index 04fc70b..13efa48 100644
+--- a/app/api/accounts/route.ts
++++ b/app/api/accounts/route.ts
+@@ -15,13 +15,12 @@ const accountSchema = z.object({
+ 
+ export async function GET() {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+     const session = await requireAuth();
+-    const data = db
++    const data = await db
+       .select()
+       .from(accounts)
+-      .where(eq(accounts.userId, session.userId))
+-      .all();
++      .where(eq(accounts.userId, session.userId));
+     return NextResponse.json(data);
+   } catch {
+     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+@@ -30,7 +29,7 @@ export async function GET() {
+ 
+ export async function POST(request: NextRequest) {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+     const session = await requireAuth();
+     const body = await request.json();
+     const data = accountSchema.parse(body);
+@@ -54,7 +53,7 @@ export async function POST(request: NextRequest) {
+ 
+ export async function PUT(request: NextRequest) {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+     const session = await requireAuth();
+     const body = await request.json();
+     const { id, ...data } = body;
+@@ -72,7 +71,7 @@ export async function PUT(request: NextRequest) {
+ 
+ export async function DELETE(request: NextRequest) {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+     const session = await requireAuth();
+     const { searchParams } = new URL(request.url);
+     const id = parseInt(searchParams.get("id") || "0");
+diff --git a/app/api/auth/login/route.ts b/app/api/auth/login/route.ts
+index acd4934..1c0d6e4 100644
+--- a/app/api/auth/login/route.ts
++++ b/app/api/auth/login/route.ts
+@@ -13,7 +13,7 @@ const loginSchema = z.object({
+ 
+ export async function POST(request: NextRequest) {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+ 
+     const body = await request.json();
+     const { email, password } = loginSchema.parse(body);
+diff --git a/app/api/auth/register/route.ts b/app/api/auth/register/route.ts
+index b0f588e..ec8e475 100644
+--- a/app/api/auth/register/route.ts
++++ b/app/api/auth/register/route.ts
+@@ -14,7 +14,7 @@ const registerSchema = z.object({
+ 
+ export async function POST(request: NextRequest) {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+ 
+     const body = await request.json();
+     const { name, email, password } = registerSchema.parse(body);
+diff --git a/app/api/budgets/route.ts b/app/api/budgets/route.ts
+index b5bc883..6efc15e 100644
+--- a/app/api/budgets/route.ts
++++ b/app/api/budgets/route.ts
+@@ -16,7 +16,7 @@ const budgetSchema = z.object({
+ 
+ export async function GET() {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+     const session = await requireAuth();
+ 
+     const allBudgets = await db
+@@ -35,8 +35,7 @@ export async function GET() {
+       })
+       .from(budgets)
+       .leftJoin(categories, eq(budgets.categoryId, categories.id))
+-      .where(eq(budgets.userId, session.userId))
+-      .all();
++      .where(eq(budgets.userId, session.userId));
+ 
+     const startOfMonth = getStartOfMonth();
+     const endOfMonth = getEndOfMonth();
+@@ -53,8 +52,7 @@ export async function GET() {
+             gte(transactions.transactionDate, budget.period === "monthly" ? startOfMonth : budget.startDate),
+             lte(transactions.transactionDate, budget.period === "monthly" ? endOfMonth : budget.endDate)
+           )
+-        )
+-        .all();
++        );
+ 
+       const spent = spentTxs.reduce((sum, t) => sum + t.amount, 0);
+ 
+@@ -69,7 +67,7 @@ export async function GET() {
+ 
+ export async function POST(request: NextRequest) {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+     const session = await requireAuth();
+     const body = await request.json();
+     const data = budgetSchema.parse(body);
+@@ -90,7 +88,7 @@ export async function POST(request: NextRequest) {
+ 
+ export async function DELETE(request: NextRequest) {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+     const session = await requireAuth();
+     const { searchParams } = new URL(request.url);
+     const id = parseInt(searchParams.get("id") || "0");
+diff --git a/app/api/categories/route.ts b/app/api/categories/route.ts
+index 33bd5ac..389db5a 100644
+--- a/app/api/categories/route.ts
++++ b/app/api/categories/route.ts
+@@ -14,13 +14,12 @@ const categorySchema = z.object({
+ 
+ export async function GET() {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+     const session = await requireAuth();
+-    const data = db
++    const data = await db
+       .select()
+       .from(categories)
+-      .where(or(eq(categories.userId, session.userId), isNull(categories.userId)))
+-      .all();
++      .where(or(eq(categories.userId, session.userId), isNull(categories.userId)));
+     return NextResponse.json(data);
+   } catch {
+     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+@@ -29,7 +28,7 @@ export async function GET() {
+ 
+ export async function POST(request: NextRequest) {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+     const session = await requireAuth();
+     const body = await request.json();
+     const data = categorySchema.parse(body);
+diff --git a/app/api/transactions/route.ts b/app/api/transactions/route.ts
+index e5e6090..f9b3ad9 100644
+--- a/app/api/transactions/route.ts
++++ b/app/api/transactions/route.ts
+@@ -17,7 +17,7 @@ const transactionSchema = z.object({
+ 
+ export async function GET(request: NextRequest) {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+     const session = await requireAuth();
+     const { searchParams } = new URL(request.url);
+     const startDate = searchParams.get("startDate");
+@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
+ 
+ export async function POST(request: NextRequest) {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+     const session = await requireAuth();
+     const body = await request.json();
+     const data = transactionSchema.parse(body);
+@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
+ 
+ export async function DELETE(request: NextRequest) {
+   try {
+-    initializeDatabase();
++    await initializeDatabase();
+     const session = await requireAuth();
+     const { searchParams } = new URL(request.url);
+     const parsedId = parseInt(searchParams.get("id") || "0");

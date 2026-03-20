@@ -1,0 +1,5 @@
+warning: in the working copy of 'lib/db/index.ts', LF will be replaced by CRLF the next time Git touches it
+[main 7508b4e] Fix: Run initializeDatabase in production to create Turso tables
+ 1 file changed, 2 deletions(-)
+To https://github.com/avsmenma/dompetku_v2.git
+   5b41657..7508b4e  main -> main

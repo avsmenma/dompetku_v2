@@ -11,14 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, TrendingUp, TrendingDown, Loader2, ArrowUpDown } from "lucide-react";
 import { formatCurrency, formatDate, formatDateInput } from "@/lib/utils";
-
-interface Account { id: number; name: string; color: string; currency: string; }
-interface Category { id: number; name: string; type: string; icon: string; color: string; }
-interface Transaction {
-  id: number; type: string; amount: number; description: string | null;
-  transactionDate: string; categoryId: number | null; accountId: number;
-  relatedAccountId: number | null; categoryName?: string; accountName?: string;
-}
+import { localDb, type Account, type Category, type Transaction } from "@/lib/db/local";
 
 const defaultForm = {
   type: "expense", accountId: "", categoryId: "", amount: "",
@@ -29,7 +22,7 @@ export default function TransactionsPage() {
   const searchParams = useSearchParams();
   const initialType = searchParams.get("type") || "all";
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<(Transaction & { categoryName?: string; accountName?: string })[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,14 +33,21 @@ export default function TransactionsPage() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
-    const [txRes, accsRes, catsRes] = await Promise.all([
-      fetch("/api/transactions"),
-      fetch("/api/accounts"),
-      fetch("/api/categories"),
+    const [txs, accs, cats] = await Promise.all([
+      localDb.transactions.orderBy("transactionDate").reverse().toArray(),
+      localDb.accounts.toArray(),
+      localDb.categories.toArray(),
     ]);
-    if (txRes.ok) setTransactions(await txRes.json());
-    if (accsRes.ok) setAccounts(await accsRes.json());
-    if (catsRes.ok) setCategories(await catsRes.json());
+    const catMap = Object.fromEntries(cats.map(c => [c.id!, c]));
+    const accMap = Object.fromEntries(accs.map(a => [a.id!, a]));
+    const enriched = txs.map(t => ({
+      ...t,
+      categoryName: t.categoryId ? catMap[t.categoryId]?.name : undefined,
+      accountName: accMap[t.accountId]?.name,
+    }));
+    setTransactions(enriched);
+    setAccounts(accs);
+    setCategories(cats);
     setLoading(false);
   }, []);
 
@@ -62,17 +62,29 @@ export default function TransactionsPage() {
     if (!form.accountId || !form.amount) return;
     setSaving(true);
     try {
-      await fetch("/api/transactions", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accountId: Number(form.accountId),
-          type: form.type,
-          amount: Number(form.amount),
-          categoryId: form.categoryId ? Number(form.categoryId) : null,
-          description: form.description || null,
-          transactionDate: form.transactionDate,
-        }),
+      const amount = Number(form.amount);
+      const accountId = Number(form.accountId);
+      const acc = await localDb.accounts.get(accountId);
+      if (!acc) return;
+
+      // Add transaction
+      await localDb.transactions.add({
+        accountId,
+        type: form.type as "income" | "expense",
+        amount,
+        categoryId: form.categoryId ? Number(form.categoryId) : null,
+        description: form.description || null,
+        transactionDate: form.transactionDate,
+        relatedAccountId: null,
+        createdAt: new Date().toISOString(),
       });
+
+      // Update account balance
+      const newBalance = form.type === "income"
+        ? acc.currentBalance + amount
+        : acc.currentBalance - amount;
+      await localDb.accounts.update(accountId, { currentBalance: newBalance });
+
       setOpen(false);
       await loadData();
     } finally { setSaving(false); }
@@ -80,7 +92,17 @@ export default function TransactionsPage() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    await fetch(`/api/transactions?id=${deleteId}`, { method: "DELETE" });
+    const tx = await localDb.transactions.get(deleteId);
+    if (tx) {
+      const acc = await localDb.accounts.get(tx.accountId);
+      if (acc) {
+        const restored = tx.type === "income"
+          ? acc.currentBalance - tx.amount
+          : acc.currentBalance + tx.amount;
+        await localDb.accounts.update(tx.accountId, { currentBalance: restored });
+      }
+      await localDb.transactions.delete(deleteId);
+    }
     setDeleteId(null);
     await loadData();
   };
@@ -88,10 +110,8 @@ export default function TransactionsPage() {
   const filtered = transactions.filter(t =>
     filter === "all" ? t.type !== "transfer" : t.type === filter
   );
-
   const filteredCategories = categories.filter(c => c.type === form.type);
-  const accountMap = Object.fromEntries(accounts.map(a => [a.id, a]));
-  const categoryMap = Object.fromEntries(categories.map(c => [c.id, c]));
+  const accountMap = Object.fromEntries(accounts.map(a => [a.id!, a]));
 
   return (
     <div className="p-4 space-y-4">
@@ -102,7 +122,6 @@ export default function TransactionsPage() {
         </Button>
       </div>
 
-      {/* Filter Tabs */}
       <div className="flex gap-2 bg-muted p-1 rounded-xl">
         {[["all", "Semua"], ["income", "Pemasukan"], ["expense", "Pengeluaran"]].map(([val, label]) => (
           <button key={val} onClick={() => setFilter(val)}
@@ -126,18 +145,15 @@ export default function TransactionsPage() {
         <div className="space-y-2">
           {filtered.map((tx) => {
             const acc = accountMap[tx.accountId];
-            const cat = tx.categoryId ? categoryMap[tx.categoryId] : null;
             const isIncome = tx.type === "income";
             return (
               <Card key={tx.id} className="border-0 shadow-sm">
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isIncome ? "bg-green-100" : "bg-red-100"}`}>
-                    {isIncome
-                      ? <TrendingUp className="h-5 w-5 text-green-600" />
-                      : <TrendingDown className="h-5 w-5 text-red-600" />}
+                    {isIncome ? <TrendingUp className="h-5 w-5 text-green-600" /> : <TrendingDown className="h-5 w-5 text-red-600" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{cat?.name || tx.description || "Tanpa Kategori"}</p>
+                    <p className="font-medium text-sm truncate">{tx.categoryName || tx.description || "Tanpa Kategori"}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       {acc && (
                         <span className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -147,7 +163,7 @@ export default function TransactionsPage() {
                       )}
                       <span className="text-[10px] text-muted-foreground">• {formatDate(tx.transactionDate)}</span>
                     </div>
-                    {tx.description && cat && (
+                    {tx.description && tx.categoryName && (
                       <p className="text-[10px] text-muted-foreground truncate mt-0.5">{tx.description}</p>
                     )}
                   </div>
@@ -156,7 +172,7 @@ export default function TransactionsPage() {
                       {isIncome ? "+" : "-"}{formatCurrency(tx.amount)}
                     </p>
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => setDeleteId(tx.id)}>
+                      onClick={() => setDeleteId(tx.id!)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -167,14 +183,10 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {/* Add Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm mx-4">
-          <DialogHeader>
-            <DialogTitle>Tambah Transaksi</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Tambah Transaksi</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            {/* Type Toggle */}
             <div className="flex gap-2 bg-muted p-1 rounded-xl">
               {[["income", "Pemasukan"], ["expense", "Pengeluaran"]].map(([val, label]) => (
                 <button key={val} onClick={() => setForm({ ...form, type: val, categoryId: "" })}
@@ -183,13 +195,11 @@ export default function TransactionsPage() {
                 </button>
               ))}
             </div>
-
             <div className="space-y-1.5">
               <Label>Jumlah (Rp)</Label>
               <Input type="number" placeholder="0" value={form.amount}
                 onChange={(e) => setForm({ ...form, amount: e.target.value })} className="text-lg font-bold" />
             </div>
-
             <div className="space-y-1.5">
               <Label>Akun</Label>
               <Select value={form.accountId} onValueChange={(v) => setForm({ ...form, accountId: v })}>
@@ -199,7 +209,6 @@ export default function TransactionsPage() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-1.5">
               <Label>Kategori</Label>
               <Select value={form.categoryId} onValueChange={(v) => setForm({ ...form, categoryId: v })}>
@@ -209,13 +218,11 @@ export default function TransactionsPage() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-1.5">
               <Label>Tanggal</Label>
               <Input type="date" value={form.transactionDate}
                 onChange={(e) => setForm({ ...form, transactionDate: e.target.value })} />
             </div>
-
             <div className="space-y-1.5">
               <Label>Catatan (opsional)</Label>
               <Input placeholder="Catatan transaksi..." value={form.description}
@@ -225,14 +232,12 @@ export default function TransactionsPage() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
             <Button onClick={handleSave} disabled={saving || !form.accountId || !form.amount}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Simpan
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Simpan
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirm */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent className="max-w-sm mx-4">
           <DialogHeader><DialogTitle>Hapus Transaksi?</DialogTitle></DialogHeader>

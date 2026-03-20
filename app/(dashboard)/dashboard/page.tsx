@@ -7,66 +7,72 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   TrendingUp, TrendingDown, Wallet, Plus, ArrowLeftRight,
-  Bell, User, ChevronRight, Eye, EyeOff
+  User, ChevronRight, Eye, EyeOff
 } from "lucide-react";
 import { formatCurrency, getStartOfMonth, getEndOfMonth, getAccountTypeLabel } from "@/lib/utils";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { localDb, getProfile, ensureDefaultCategories, type Account, type Category } from "@/lib/db/local";
 import { AccountLogo } from "@/components/ui/account-logo";
 
-interface Account {
-  id: number; name: string; type: string;
-  currentBalance: number; currency: string; color: string;
-  isHidden: boolean; priorityOrder: number;
-}
-
-interface ReportData {
-  totalIncome: number; totalExpense: number; netSaving: number;
-  expenseByCategory: Array<{ name: string; amount: number; color: string }>;
-}
+interface ChartItem { name: string; amount: number; color: string; }
 
 export default function DashboardPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [report, setReport] = useState<ReportData | null>(null);
+  const [chartData, setChartData] = useState<ChartItem[]>([]);
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [totalExpense, setTotalExpense] = useState(0);
   const [showBalance, setShowBalance] = useState(true);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("");
 
   const loadData = useCallback(async () => {
-    try {
-      const [accsRes, reportRes, meRes] = await Promise.all([
-        fetch("/api/accounts"),
-        fetch(`/api/reports?startDate=${getStartOfMonth()}&endDate=${getEndOfMonth()}`),
-        fetch("/api/auth/me"),
-      ]);
-      if (accsRes.ok) setAccounts(await accsRes.json());
-      if (reportRes.ok) setReport(await reportRes.json());
-      if (meRes.ok) {
-        const { user } = await meRes.json();
-        setUserName(user.name);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+    await ensureDefaultCategories();
+    const profile = getProfile();
+    setUserName(profile?.name || "");
+
+    const start = getStartOfMonth();
+    const end = getEndOfMonth();
+
+    const [accs, txs, cats] = await Promise.all([
+      localDb.accounts.toArray(),
+      localDb.transactions
+        .where("transactionDate").between(start, end, true, true)
+        .toArray(),
+      localDb.categories.toArray(),
+    ]);
+
+    setAccounts(accs.filter(a => !a.isHidden).sort((a, b) => a.priorityOrder - b.priorityOrder));
+
+    const income = txs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
+    const expense = txs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+    setTotalIncome(income);
+    setTotalExpense(expense);
+
+    // Build expense by category chart
+    const catMap = Object.fromEntries(cats.map(c => [c.id!, c]));
+    const byCat: Record<number, number> = {};
+    txs.filter(t => t.type === "expense" && t.categoryId).forEach(t => {
+      byCat[t.categoryId!] = (byCat[t.categoryId!] || 0) + t.amount;
+    });
+    const chart = Object.entries(byCat)
+      .map(([id, amount]) => {
+        const cat = catMap[Number(id)];
+        return { name: cat?.name || "Lainnya", amount, color: cat?.color || "#6366f1" };
+      })
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+    setChartData(chart);
+    setLoading(false);
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const totalWealth = accounts
-    .filter((a) => !a.isHidden)
-    .reduce((sum, a) => sum + a.currentBalance, 0);
-
-  const visibleAccounts = accounts
-    .filter((a) => !a.isHidden)
-    .sort((a, b) => a.priorityOrder - b.priorityOrder);
-
-  const chartData = report?.expenseByCategory.slice(0, 5) || [];
+  const totalWealth = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
@@ -79,13 +85,9 @@ export default function DashboardPage() {
           <p className="text-sm text-muted-foreground">Selamat datang,</p>
           <h1 className="text-xl font-bold">{userName || "Pengguna"} 👋</h1>
         </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="icon" className="rounded-full" asChild>
-            <Link href="/profile">
-              <User className="h-5 w-5" />
-            </Link>
-          </Button>
-        </div>
+        <Button variant="ghost" size="icon" className="rounded-full" asChild>
+          <Link href="/profile"><User className="h-5 w-5" /></Link>
+        </Button>
       </div>
 
       {/* Total Wealth Card */}
@@ -109,24 +111,21 @@ export default function DashboardPage() {
               <Wallet className="h-6 w-6" />
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/20">
             <div>
               <div className="flex items-center gap-1 text-violet-200 text-xs mb-1">
-                <TrendingUp className="h-3 w-3" />
-                <span>Pemasukan Bulan Ini</span>
+                <TrendingUp className="h-3 w-3" /><span>Pemasukan Bulan Ini</span>
               </div>
               <p className="font-semibold text-sm">
-                {showBalance ? formatCurrency(report?.totalIncome || 0) : "Rp ••••"}
+                {showBalance ? formatCurrency(totalIncome) : "Rp ••••"}
               </p>
             </div>
             <div>
               <div className="flex items-center gap-1 text-violet-200 text-xs mb-1">
-                <TrendingDown className="h-3 w-3" />
-                <span>Pengeluaran Bulan Ini</span>
+                <TrendingDown className="h-3 w-3" /><span>Pengeluaran Bulan Ini</span>
               </div>
               <p className="font-semibold text-sm">
-                {showBalance ? formatCurrency(report?.totalExpense || 0) : "Rp ••••"}
+                {showBalance ? formatCurrency(totalExpense) : "Rp ••••"}
               </p>
             </div>
           </div>
@@ -167,7 +166,7 @@ export default function DashboardPage() {
           </Link>
         </CardHeader>
         <CardContent className="space-y-3">
-          {visibleAccounts.length === 0 ? (
+          {accounts.length === 0 ? (
             <div className="text-center py-6">
               <p className="text-muted-foreground text-sm">Belum ada akun</p>
               <Link href="/accounts">
@@ -177,7 +176,7 @@ export default function DashboardPage() {
               </Link>
             </div>
           ) : (
-            visibleAccounts.map((acc) => (
+            accounts.map((acc) => (
               <div key={acc.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <AccountLogo name={acc.name} color={acc.color} size="sm" />

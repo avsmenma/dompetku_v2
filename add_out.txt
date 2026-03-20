@@ -1,0 +1,7 @@
+warning: in the working copy of 'app/api/accounts/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/auth/login/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/auth/register/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/budgets/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/categories/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/reports/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/transactions/route.ts', LF will be replaced by CRLF the next time Git touches it

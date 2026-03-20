@@ -1,0 +1,13 @@
+warning: in the working copy of 'public/manifest.json', LF will be replaced by CRLF the next time Git touches it
+[main 3df5edd] Fix: PWA manifest icons and add all icon sizes for PWABuilder
+ 9 files changed, 55 insertions(+), 4 deletions(-)
+ create mode 100644 public/icons/icon-128.png
+ create mode 100644 public/icons/icon-192.png
+ create mode 100644 public/icons/icon-256.png
+ create mode 100644 public/icons/icon-384.png
+ create mode 100644 public/icons/icon-48.png
+ create mode 100644 public/icons/icon-512.png
+ create mode 100644 public/icons/icon-72.png
+ create mode 100644 public/icons/icon-96.png
+To https://github.com/avsmenma/dompetku_v2.git
+   7508b4e..3df5edd  main -> main

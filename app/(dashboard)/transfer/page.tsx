@@ -2,15 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowDown, Loader2, CheckCircle } from "lucide-react";
 import { formatCurrency, formatDateInput } from "@/lib/utils";
-
-interface Account { id: number; name: string; color: string; currentBalance: number; currency: string; }
+import { localDb, type Account } from "@/lib/db/local";
 
 export default function TransferPage() {
   const router = useRouter();
@@ -24,8 +23,8 @@ export default function TransferPage() {
   const [success, setSuccess] = useState(false);
 
   const loadAccounts = useCallback(async () => {
-    const res = await fetch("/api/accounts");
-    if (res.ok) setAccounts(await res.json());
+    const accs = await localDb.accounts.toArray();
+    setAccounts(accs);
   }, []);
 
   useEffect(() => { loadAccounts(); }, [loadAccounts]);
@@ -37,35 +36,38 @@ export default function TransferPage() {
   const canSave = fromId && toId && fromId !== toId && amount && amountNum > 0 && !isInsufficient;
 
   const handleSave = async () => {
-    if (!canSave) return;
+    if (!canSave || !fromAccount || !toAccount) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/transactions", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accountId: Number(fromId),
-          type: "transfer",
-          amount: amountNum,
-          description: description || null,
-          transactionDate: date,
-          relatedAccountId: Number(toId),
-        }),
+      const fromAcc = await localDb.accounts.get(Number(fromId));
+      const toAcc = await localDb.accounts.get(Number(toId));
+      if (!fromAcc || !toAcc) return;
+
+      // Add transfer transaction
+      await localDb.transactions.add({
+        accountId: Number(fromId),
+        type: "transfer",
+        amount: amountNum,
+        categoryId: null,
+        description: description || null,
+        transactionDate: date,
+        relatedAccountId: Number(toId),
+        createdAt: new Date().toISOString(),
       });
-      if (res.ok) {
-        setSuccess(true);
-        setTimeout(() => {
-          router.push("/dashboard");
-        }, 1500);
-      }
+
+      // Update balances
+      await localDb.accounts.update(Number(fromId), { currentBalance: fromAcc.currentBalance - amountNum });
+      await localDb.accounts.update(Number(toId), { currentBalance: toAcc.currentBalance + amountNum });
+
+      setSuccess(true);
+      setTimeout(() => router.push("/dashboard"), 1500);
     } finally { setSaving(false); }
   };
 
   if (success) {
     return (
       <div className="p-4 flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="bg-green-100 p-6 rounded-full">
-          <CheckCircle className="h-12 w-12 text-green-600" />
-        </div>
+        <div className="bg-green-100 p-6 rounded-full"><CheckCircle className="h-12 w-12 text-green-600" /></div>
         <h2 className="text-xl font-bold">Transfer Berhasil!</h2>
         <p className="text-muted-foreground text-sm">Saldo telah dipindahkan</p>
       </div>
@@ -81,13 +83,10 @@ export default function TransferPage() {
 
       <Card className="border-0 shadow-sm">
         <CardContent className="p-5 space-y-5">
-          {/* From Account */}
           <div className="space-y-1.5">
             <Label>Dari Akun</Label>
             <Select value={fromId} onValueChange={setFromId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih akun sumber..." />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Pilih akun sumber..." /></SelectTrigger>
               <SelectContent>
                 {accounts.map(a => (
                   <SelectItem key={a.id} value={String(a.id)}>
@@ -106,20 +105,14 @@ export default function TransferPage() {
             )}
           </div>
 
-          {/* Arrow */}
           <div className="flex justify-center">
-            <div className="bg-primary/10 p-3 rounded-full">
-              <ArrowDown className="h-5 w-5 text-primary" />
-            </div>
+            <div className="bg-primary/10 p-3 rounded-full"><ArrowDown className="h-5 w-5 text-primary" /></div>
           </div>
 
-          {/* To Account */}
           <div className="space-y-1.5">
             <Label>Ke Akun</Label>
             <Select value={toId} onValueChange={setToId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih akun tujuan..." />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Pilih akun tujuan..." /></SelectTrigger>
               <SelectContent>
                 {accounts.filter(a => String(a.id) !== fromId).map(a => (
                   <SelectItem key={a.id} value={String(a.id)}>
@@ -138,7 +131,6 @@ export default function TransferPage() {
             )}
           </div>
 
-          {/* Summary Banner */}
           {fromAccount && toAccount && amountNum > 0 && (
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
               <div className="flex justify-between text-sm">
@@ -156,26 +148,19 @@ export default function TransferPage() {
             </div>
           )}
 
-          {/* Amount */}
           <div className="space-y-1.5">
             <Label>Jumlah (Rp)</Label>
-            <Input
-              type="number" placeholder="0" value={amount}
+            <Input type="number" placeholder="0" value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className={`text-lg font-bold ${isInsufficient ? "border-destructive" : ""}`}
-            />
-            {isInsufficient && (
-              <p className="text-xs text-destructive">Saldo tidak mencukupi</p>
-            )}
+              className={`text-lg font-bold ${isInsufficient ? "border-destructive" : ""}`} />
+            {isInsufficient && <p className="text-xs text-destructive">Saldo tidak mencukupi</p>}
           </div>
 
-          {/* Date */}
           <div className="space-y-1.5">
             <Label>Tanggal</Label>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
 
-          {/* Description */}
           <div className="space-y-1.5">
             <Label>Catatan (opsional)</Label>
             <Input placeholder="Misal: Top-up Gopay, Tarik Tunai BCA..."

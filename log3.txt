@@ -1,0 +1,3 @@
+5b41657 Fix: Add missing await for initializeDatabase and db queries across all API routes
+8b16f2d Fix: Add missing await for allBudgets query
+7a6d4d4 Fix: Add missing async await in budgets route

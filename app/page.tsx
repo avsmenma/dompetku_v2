@@ -1,11 +1,17 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { getProfile } from "@/lib/db/local";
 
-export default async function HomePage() {
-  const session = await getSession();
-  if (session) {
-    redirect("/dashboard");
-  } else {
-    redirect("/login");
-  }
+export default function HomePage() {
+  const router = useRouter();
+  useEffect(() => {
+    const profile = getProfile();
+    if (profile?.name) {
+      router.replace("/dashboard");
+    } else {
+      router.replace("/login");
+    }
+  }, [router]);
+  return null;
 }

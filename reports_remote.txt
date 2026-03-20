@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { db, initializeDatabase } from "@/lib/db";
 import { transactions, accounts, categories } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
@@ -7,13 +7,13 @@ import { getStartOfMonth, getEndOfMonth } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
-    await initializeDatabase();
+    initializeDatabase();
     const session = await requireAuth();
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get("startDate") || getStartOfMonth();
     const endDate = searchParams.get("endDate") || getEndOfMonth();
 
-    const txList = await db
+    const txList = db
       .select({
         id: transactions.id,
         type: transactions.type,
@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
           gte(transactions.transactionDate, startDate),
           lte(transactions.transactionDate, endDate)
         )
-      );
+      )
+      .all();
 
     const totalIncome = txList
       .filter((t) => t.type === "income")

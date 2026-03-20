@@ -1,0 +1,5 @@
+8b16f2d Fix: Add missing await for allBudgets query
+7a6d4d4 Fix: Add missing async await in budgets route
+91a9ad9 ?
+b93ae00 ?
+f59181e ?

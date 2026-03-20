@@ -9,18 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Eye, EyeOff, Wallet, Loader2 } from "lucide-react";
-import { AccountLogo } from "@/components/ui/account-logo";
 import { formatCurrency, getAccountTypeLabel } from "@/lib/utils";
-
-interface Account {
-  id: number; name: string; type: string;
-  currentBalance: number; currency: string; color: string;
-  isHidden: boolean; priorityOrder: number;
-}
+import { localDb, type Account } from "@/lib/db/local";
+import { AccountLogo } from "@/components/ui/account-logo";
 
 const COLORS = ["#6366f1","#8b5cf6","#ec4899","#ef4444","#f97316","#eab308","#22c55e","#10b981","#06b6d4","#3b82f6"];
-
-const defaultForm = { name: "", type: "cash", currentBalance: 0, currency: "IDR", color: "#6366f1" };
+const defaultForm = { name: "", type: "cash" as "cash"|"bank"|"ewallet", currentBalance: 0, currency: "IDR", color: "#6366f1" };
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -32,8 +26,8 @@ export default function AccountsPage() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const loadAccounts = useCallback(async () => {
-    const res = await fetch("/api/accounts");
-    if (res.ok) setAccounts(await res.json());
+    const accs = await localDb.accounts.orderBy("priorityOrder").toArray();
+    setAccounts(accs);
     setLoading(false);
   }, []);
 
@@ -49,15 +43,16 @@ export default function AccountsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (editAccount) {
-        await fetch("/api/accounts", {
-          method: "PUT", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: editAccount.id, ...form }),
+      if (editAccount?.id) {
+        await localDb.accounts.update(editAccount.id, {
+          name: form.name, type: form.type, currency: form.currency, color: form.color,
         });
       } else {
-        await fetch("/api/accounts", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+        const count = await localDb.accounts.count();
+        await localDb.accounts.add({
+          name: form.name, type: form.type, currentBalance: form.currentBalance,
+          currency: form.currency, color: form.color, isHidden: false,
+          priorityOrder: count, createdAt: new Date().toISOString(),
         });
       }
       setOpen(false);
@@ -66,21 +61,18 @@ export default function AccountsPage() {
   };
 
   const handleToggleHide = async (acc: Account) => {
-    await fetch("/api/accounts", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: acc.id, isHidden: !acc.isHidden }),
-    });
+    await localDb.accounts.update(acc.id!, { isHidden: !acc.isHidden });
     await loadAccounts();
   };
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    await fetch(`/api/accounts?id=${deleteId}`, { method: "DELETE" });
+    await localDb.transactions.where("accountId").equals(deleteId).delete();
+    await localDb.accounts.delete(deleteId);
     setDeleteId(null);
     await loadAccounts();
   };
 
-  const sorted = [...accounts].sort((a, b) => a.priorityOrder - b.priorityOrder);
   const totalBalance = accounts.filter(a => !a.isHidden).reduce((s, a) => s + a.currentBalance, 0);
 
   return (
@@ -97,7 +89,7 @@ export default function AccountsPage() {
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="animate-spin h-6 w-6 text-primary" /></div>
-      ) : sorted.length === 0 ? (
+      ) : accounts.length === 0 ? (
         <Card className="border-dashed border-2 border-muted">
           <CardContent className="flex flex-col items-center py-12 gap-3">
             <div className="bg-muted p-4 rounded-2xl"><Wallet className="h-8 w-8 text-muted-foreground" /></div>
@@ -107,7 +99,7 @@ export default function AccountsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {sorted.map((acc) => (
+          {accounts.map((acc) => (
             <Card key={acc.id} className={`border-0 shadow-sm ${acc.isHidden ? "opacity-60" : ""}`}>
               <CardContent className="p-4 flex items-center gap-3">
                 <AccountLogo name={acc.name} color={acc.color} size="md" />
@@ -126,7 +118,7 @@ export default function AccountsPage() {
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(acc)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(acc.id)}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(acc.id!)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -136,12 +128,9 @@ export default function AccountsPage() {
         </div>
       )}
 
-      {/* Add/Edit Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm mx-4">
-          <DialogHeader>
-            <DialogTitle>{editAccount ? "Edit Akun" : "Tambah Akun"}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{editAccount ? "Edit Akun" : "Tambah Akun"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Nama Akun</Label>
@@ -150,7 +139,7 @@ export default function AccountsPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Tipe Akun</Label>
-              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as "cash"|"bank"|"ewallet" })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Uang Tunai</SelectItem>
@@ -180,14 +169,12 @@ export default function AccountsPage() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
             <Button onClick={handleSave} disabled={saving || !form.name}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Simpan
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Simpan
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirm Dialog */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent className="max-w-sm mx-4">
           <DialogHeader><DialogTitle>Hapus Akun?</DialogTitle></DialogHeader>

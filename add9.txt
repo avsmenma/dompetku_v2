@@ -1,0 +1,4 @@
+[main 194970e] Fix: Regenerate screenshot as proper PNG 540x960
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+To https://github.com/avsmenma/dompetku_v2.git
+   988f09b..194970e  main -> main

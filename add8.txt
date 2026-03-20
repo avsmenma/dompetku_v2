@@ -1,0 +1,4 @@
+[main 988f09b] Fix: Regenerate all icons as proper PNG with correct sizes, fix screenshot
+ 8 files changed, 0 insertions(+), 0 deletions(-)
+To https://github.com/avsmenma/dompetku_v2.git
+   561ed07..988f09b  main -> main
