@@ -1,0 +1,102 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db, initializeDatabase } from "@/lib/db";
+import { transactions, accounts, categories } from "@/lib/db/schema";
+import { requireAuth } from "@/lib/auth";
+import { eq, and, gte, lte } from "drizzle-orm";
+import { getStartOfMonth, getEndOfMonth } from "@/lib/utils";
+
+export async function GET(request: NextRequest) {
+  try {
+    initializeDatabase();
+    const session = await requireAuth();
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get("startDate") || getStartOfMonth();
+    const endDate = searchParams.get("endDate") || getEndOfMonth();
+
+    const txList = db
+      .select({
+        id: transactions.id,
+        type: transactions.type,
+        amount: transactions.amount,
+        transactionDate: transactions.transactionDate,
+        categoryId: transactions.categoryId,
+        accountId: transactions.accountId,
+        categoryName: categories.name,
+        categoryIcon: categories.icon,
+        categoryColor: categories.color,
+        accountName: accounts.name,
+      })
+      .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+      .where(
+        and(
+          eq(transactions.userId, session.userId),
+          gte(transactions.transactionDate, startDate),
+          lte(transactions.transactionDate, endDate)
+        )
+      )
+      .all();
+
+    const totalIncome = txList
+      .filter((t) => t.type === "income")
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalExpense = txList
+      .filter((t) => t.type === "expense")
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const expenseByCategory: Record<string, { name: string; amount: number; color: string; icon: string }> = {};
+    txList
+      .filter((t) => t.type === "expense" && t.categoryName)
+      .forEach((t) => {
+        const key = t.categoryName!;
+        if (!expenseByCategory[key]) {
+          expenseByCategory[key] = {
+            name: key,
+            amount: 0,
+            color: t.categoryColor || "#94a3b8",
+            icon: t.categoryIcon || "circle",
+          };
+        }
+        expenseByCategory[key].amount += t.amount;
+      });
+
+    const incomeByCategory: Record<string, { name: string; amount: number; color: string }> = {};
+    txList
+      .filter((t) => t.type === "income" && t.categoryName)
+      .forEach((t) => {
+        const key = t.categoryName!;
+        if (!incomeByCategory[key]) {
+          incomeByCategory[key] = {
+            name: key,
+            amount: 0,
+            color: t.categoryColor || "#22c55e",
+          };
+        }
+        incomeByCategory[key].amount += t.amount;
+      });
+
+    const dailyData: Record<string, { date: string; income: number; expense: number }> = {};
+    txList.forEach((t) => {
+      const date = t.transactionDate.split("T")[0];
+      if (!dailyData[date]) {
+        dailyData[date] = { date, income: 0, expense: 0 };
+      }
+      if (t.type === "income") dailyData[date].income += t.amount;
+      if (t.type === "expense") dailyData[date].expense += t.amount;
+    });
+
+    return NextResponse.json({
+      totalIncome,
+      totalExpense,
+      netSaving: totalIncome - totalExpense,
+      expenseByCategory: Object.values(expenseByCategory).sort((a, b) => b.amount - a.amount),
+      incomeByCategory: Object.values(incomeByCategory).sort((a, b) => b.amount - a.amount),
+      dailyData: Object.values(dailyData).sort((a, b) => a.date.localeCompare(b.date)),
+      transactions: txList,
+    });
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+}
