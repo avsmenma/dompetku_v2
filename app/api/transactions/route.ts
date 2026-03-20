@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = transactionSchema.parse(body);
 
-    const account = db
+    const account = await db
       .select()
       .from(accounts)
       .where(and(eq(accounts.id, data.accountId), eq(accounts.userId, session.userId)))
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Akun tujuan diperlukan untuk transfer" }, { status: 400 });
       }
 
-      const targetAccount = db
+      const targetAccount = await db
         .select()
         .from(accounts)
         .where(and(eq(accounts.id, data.relatedAccountId), eq(accounts.userId, session.userId)))
@@ -114,27 +114,27 @@ export async function DELETE(request: NextRequest) {
     initializeDatabase();
     const session = await requireAuth();
     const { searchParams } = new URL(request.url);
-    const id = parseInt(searchParams.get("id") || "0");
+    const parsedId = parseInt(searchParams.get("id") || "0");
 
-    const tx = db
+    // Fetch original transaction
+    const [tx] = await db
       .select()
       .from(transactions)
-      .where(and(eq(transactions.id, id), eq(transactions.userId, session.userId)))
-      .get();
+      .where(and(eq(transactions.id, parsedId), eq(transactions.userId, session.userId)));
 
     if (!tx) {
       return NextResponse.json({ error: "Transaksi tidak ditemukan" }, { status: 404 });
     }
 
-    const account = db.select().from(accounts).where(eq(accounts.id, tx.accountId)).get();
-
+    // Fetch related account and revert balance
+    const account = await db.select().from(accounts).where(eq(accounts.id, tx.accountId)).get();
     if (account) {
       if (tx.type === "income") {
         await db.update(accounts).set({ currentBalance: account.currentBalance - tx.amount }).where(eq(accounts.id, tx.accountId));
       } else if (tx.type === "expense") {
         await db.update(accounts).set({ currentBalance: account.currentBalance + tx.amount }).where(eq(accounts.id, tx.accountId));
       } else if (tx.type === "transfer" && tx.relatedAccountId) {
-        const relatedAccount = db.select().from(accounts).where(eq(accounts.id, tx.relatedAccountId)).get();
+        const relatedAccount = await db.select().from(accounts).where(eq(accounts.id, tx.relatedAccountId)).get();
         await db.update(accounts).set({ currentBalance: account.currentBalance + tx.amount }).where(eq(accounts.id, tx.accountId));
         if (relatedAccount) {
           await db.update(accounts).set({ currentBalance: relatedAccount.currentBalance - tx.amount }).where(eq(accounts.id, tx.relatedAccountId));
@@ -142,7 +142,7 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    await db.delete(transactions).where(eq(transactions.id, id));
+    await db.delete(transactions).where(eq(transactions.id, parsedId));
 
     return NextResponse.json({ success: true });
   } catch {

@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, email, password } = registerSchema.parse(body);
 
-    const existing = db.select().from(users).where(eq(users.email, email)).get();
+    const existing = await db.select().from(users).where(eq(users.email, email)).get();
     if (existing) {
       return NextResponse.json(
         { error: "Email sudah terdaftar" },

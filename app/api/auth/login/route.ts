@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password } = loginSchema.parse(body);
 
-    const user = db.select().from(users).where(eq(users.email, email)).get();
+    const user = await db.select().from(users).where(eq(users.email, email)).get();
     if (!user) {
       return NextResponse.json({ error: "Email atau password salah" }, { status: 401 });
     }
