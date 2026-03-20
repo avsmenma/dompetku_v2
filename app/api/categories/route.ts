@@ -14,13 +14,12 @@ const categorySchema = z.object({
 
 export async function GET() {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
-    const data = db
+    const data = await db
       .select()
       .from(categories)
-      .where(or(eq(categories.userId, session.userId), isNull(categories.userId)))
-      .all();
+      .where(or(eq(categories.userId, session.userId), isNull(categories.userId)));
     return NextResponse.json(data);
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,7 +28,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
     const body = await request.json();
     const data = categorySchema.parse(body);

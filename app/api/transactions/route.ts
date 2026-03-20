@@ -17,7 +17,7 @@ const transactionSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get("startDate");
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
     const body = await request.json();
     const data = transactionSchema.parse(body);
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
     const { searchParams } = new URL(request.url);
     const parsedId = parseInt(searchParams.get("id") || "0");

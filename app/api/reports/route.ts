@@ -7,13 +7,13 @@ import { getStartOfMonth, getEndOfMonth } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get("startDate") || getStartOfMonth();
     const endDate = searchParams.get("endDate") || getEndOfMonth();
 
-    const txList = db
+    const txList = await db
       .select({
         id: transactions.id,
         type: transactions.type,
@@ -35,8 +35,7 @@ export async function GET(request: NextRequest) {
           gte(transactions.transactionDate, startDate),
           lte(transactions.transactionDate, endDate)
         )
-      )
-      .all();
+      );
 
     const totalIncome = txList
       .filter((t) => t.type === "income")

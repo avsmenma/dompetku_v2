@@ -13,7 +13,7 @@ const loginSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
 
     const body = await request.json();
     const { email, password } = loginSchema.parse(body);

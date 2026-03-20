@@ -16,7 +16,7 @@ const budgetSchema = z.object({
 
 export async function GET() {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
 
     const allBudgets = await db
@@ -35,8 +35,7 @@ export async function GET() {
       })
       .from(budgets)
       .leftJoin(categories, eq(budgets.categoryId, categories.id))
-      .where(eq(budgets.userId, session.userId))
-      .all();
+      .where(eq(budgets.userId, session.userId));
 
     const startOfMonth = getStartOfMonth();
     const endOfMonth = getEndOfMonth();
@@ -53,8 +52,7 @@ export async function GET() {
             gte(transactions.transactionDate, budget.period === "monthly" ? startOfMonth : budget.startDate),
             lte(transactions.transactionDate, budget.period === "monthly" ? endOfMonth : budget.endDate)
           )
-        )
-        .all();
+        );
 
       const spent = spentTxs.reduce((sum, t) => sum + t.amount, 0);
 
@@ -69,7 +67,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
     const body = await request.json();
     const data = budgetSchema.parse(body);
@@ -90,7 +88,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
     const { searchParams } = new URL(request.url);
     const id = parseInt(searchParams.get("id") || "0");

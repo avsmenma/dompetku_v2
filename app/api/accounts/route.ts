@@ -15,13 +15,12 @@ const accountSchema = z.object({
 
 export async function GET() {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
-    const data = db
+    const data = await db
       .select()
       .from(accounts)
-      .where(eq(accounts.userId, session.userId))
-      .all();
+      .where(eq(accounts.userId, session.userId));
     return NextResponse.json(data);
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -30,7 +29,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
     const body = await request.json();
     const data = accountSchema.parse(body);
@@ -54,7 +53,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
     const body = await request.json();
     const { id, ...data } = body;
@@ -72,7 +71,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    initializeDatabase();
+    await initializeDatabase();
     const session = await requireAuth();
     const { searchParams } = new URL(request.url);
     const id = parseInt(searchParams.get("id") || "0");
