@@ -180,7 +180,8 @@ const BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus
             </div>
           ) : (
             accounts.map((acc) => (
-              <div key={acc.id} className="flex items-center justify-between">
+              <Link key={acc.id} href={`/transactions?accountId=${acc.id}`}
+                className="flex items-center justify-between p-1 -mx-1 rounded-xl hover:bg-muted transition-colors cursor-pointer">
                 <div className="flex items-center gap-3">
                   <AccountLogo name={acc.name} color={acc.color} size="sm" />
                   <div>
@@ -190,10 +191,13 @@ const BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus
                     </Badge>
                   </div>
                 </div>
-                <p className="font-semibold text-sm">
-                  {showBalance ? formatCurrency(acc.currentBalance, acc.currency) : "Rp ••••"}
-                </p>
-              </div>
+                <div className="flex items-center gap-1">
+                  <p className="font-semibold text-sm">
+                    {showBalance ? formatCurrency(acc.currentBalance, acc.currency) : "Rp ••••"}
+                  </p>
+                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                </div>
+              </Link>
             ))
           )}
         </CardContent>

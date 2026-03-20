@@ -21,6 +21,7 @@ const defaultForm = {
 export default function TransactionsPage() {
   const searchParams = useSearchParams();
   const initialType = searchParams.get("type") || "all";
+  const initialAccountId = searchParams.get("accountId") || "";
 
   const [transactions, setTransactions] = useState<(Transaction & { categoryName?: string; accountName?: string })[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -30,6 +31,7 @@ export default function TransactionsPage() {
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState(initialType);
   const [periodFilter, setPeriodFilter] = useState("month");
+  const [accountFilter, setAccountFilter] = useState(initialAccountId);
   const [form, setForm] = useState({ ...defaultForm, type: initialType === "all" ? "expense" : initialType });
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
@@ -119,15 +121,26 @@ export default function TransactionsPage() {
     if (periodFilter === "today") periodOk = t.transactionDate === todayStr;
     else if (periodFilter === "month") periodOk = t.transactionDate.startsWith(monthStr);
     else if (periodFilter === "year") periodOk = t.transactionDate.startsWith(yearStr);
-    return typeOk && periodOk;
+    const accountOk = !accountFilter || String(t.accountId) === accountFilter;
+    return typeOk && periodOk && accountOk;
   });
+  const activeAccountName = accountFilter ? accounts.find(a => String(a.id) === accountFilter)?.name : null;
   const filteredCategories = categories.filter(c => c.type === form.type);
   const accountMap = Object.fromEntries(accounts.map(a => [a.id!, a]));
 
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between pt-2">
-        <h1 className="text-xl font-bold">Transaksi</h1>
+        <div>
+          <h1 className="text-xl font-bold">Transaksi</h1>
+          {activeAccountName && (
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-xs text-muted-foreground">Akun:</span>
+              <span className="text-xs font-semibold text-primary">{activeAccountName}</span>
+              <button onClick={() => setAccountFilter("")} className="text-[10px] text-muted-foreground hover:text-destructive ml-1">✕ semua</button>
+            </div>
+          )}
+        </div>
         <Button onClick={openAdd} size="sm" className="rounded-xl">
           <Plus className="h-4 w-4 mr-1" /> Tambah
         </Button>
