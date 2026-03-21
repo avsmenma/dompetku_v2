@@ -25,6 +25,8 @@ interface BudgetWithSpent extends Budget {
   spent: number;
 }
 
+const BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+
 export default function BudgetsPage() {
   const [budgets, setBudgets] = useState<BudgetWithSpent[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -32,19 +34,23 @@ export default function BudgetsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [form, setForm] = useState({
     categoryId: "", limitAmount: "", period: "monthly",
     startDate: getStartOfMonth(), endDate: getEndOfMonth(),
   });
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (month: number, year: number) => {
+    const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
     const [rawBudgets, cats, txs] = await Promise.all([
       localDb.budgets.toArray(),
       localDb.categories.toArray(),
-      localDb.transactions.where("transactionDate").between(getStartOfMonth(), getEndOfMonth(), true, true).toArray(),
+      localDb.transactions.where("transactionDate").between(start, end, true, true).toArray(),
     ]);
     const catMap = Object.fromEntries(cats.map(c => [c.id!, c]));
-    // Calculate spent per category
     const spentMap: Record<number, number> = {};
     txs.filter(t => t.type === "expense" && t.categoryId).forEach(t => {
       spentMap[t.categoryId!] = (spentMap[t.categoryId!] || 0) + t.amount;
@@ -60,7 +66,19 @@ export default function BudgetsPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadData(selectedMonth, selectedYear); }, [loadData, selectedMonth, selectedYear]);
+
+  const prevMonth = () => {
+    if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
+    else setSelectedMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    const now = new Date();
+    if (selectedYear === now.getFullYear() && selectedMonth === now.getMonth()) return;
+    if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1); }
+    else setSelectedMonth(m => m + 1);
+  };
+  const isCurrentMonth = selectedMonth === new Date().getMonth() && selectedYear === new Date().getFullYear();
 
   const handleSave = async () => {
     if (!form.categoryId || !form.limitAmount) return;
@@ -76,7 +94,7 @@ export default function BudgetsPage() {
       });
       setOpen(false);
       setForm({ categoryId: "", limitAmount: "", period: "monthly", startDate: getStartOfMonth(), endDate: getEndOfMonth() });
-      await loadData();
+      await loadData(selectedMonth, selectedYear);
     } finally { setSaving(false); }
   };
 
@@ -84,7 +102,7 @@ export default function BudgetsPage() {
     if (!deleteId) return;
     await localDb.budgets.delete(deleteId);
     setDeleteId(null);
-    await loadData();
+    await loadData(selectedMonth, selectedYear);
   };
 
   const totalBudget = budgets.reduce((s, b) => s + b.limitAmount, 0);
@@ -93,13 +111,18 @@ export default function BudgetsPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between pt-2">
-        <div>
-          <h1 className="text-xl font-bold">Budget</h1>
-          <p className="text-sm text-muted-foreground">Bulan ini</p>
+        <h1 className="text-xl font-bold">Budget</h1>
+        <div className="flex items-center gap-2">
+          <button onClick={prevMonth} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold">‹</button>
+          <span className="text-xs font-semibold min-w-[100px] text-center">{BULAN[selectedMonth]} {selectedYear}</span>
+          <button onClick={nextMonth} disabled={isCurrentMonth}
+            className={`w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold ${isCurrentMonth ? "opacity-40" : ""}`}>›</button>
+          {isCurrentMonth && (
+            <Button onClick={() => setOpen(true)} size="sm" className="rounded-xl ml-1">
+              <Plus className="h-4 w-4 mr-1" /> Tambah
+            </Button>
+          )}
         </div>
-        <Button onClick={() => setOpen(true)} size="sm" className="rounded-xl">
-          <Plus className="h-4 w-4 mr-1" /> Tambah
-        </Button>
       </div>
 
       {budgets.length > 0 && (
