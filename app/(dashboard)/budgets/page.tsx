@@ -12,6 +12,13 @@ import { Plus, Trash2, PieChart, Loader2, AlertTriangle } from "lucide-react";
 import { formatCurrency, getStartOfMonth, getEndOfMonth } from "@/lib/utils";
 import { localDb, type Category, type Budget } from "@/lib/db/local";
 
+function fmtRupiah(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  return Number(digits).toLocaleString("id-ID");
+}
+function parseRupiah(s: string): string { return s.replace(/\./g, ""); }
+
 interface BudgetWithSpent extends Budget {
   categoryName?: string;
   categoryColor?: string;
@@ -189,8 +196,17 @@ export default function BudgetsPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Batas Budget (Rp)</Label>
-              <Input type="number" placeholder="Contoh: 1000000" value={form.limitAmount}
-                onChange={(e) => setForm({ ...form, limitAmount: e.target.value })} />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Rp</span>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="1.000.000"
+                  value={fmtRupiah(form.limitAmount)}
+                  onChange={(e) => setForm({ ...form, limitAmount: parseRupiah(e.target.value) })}
+                  className="pl-9"
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>Periode</Label>
