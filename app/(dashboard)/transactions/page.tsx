@@ -13,6 +13,15 @@ import { Plus, Trash2, TrendingUp, TrendingDown, Loader2, ArrowUpDown } from "lu
 import { formatCurrency, formatDate, formatDateInput } from "@/lib/utils";
 import { localDb, type Account, type Category, type Transaction } from "@/lib/db/local";
 
+function fmtRupiah(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  return Number(digits).toLocaleString("id-ID");
+}
+function parseRupiah(formatted: string): string {
+  return formatted.replace(/\./g, "");
+}
+
 const defaultForm = {
   type: "expense", accountId: "", categoryId: "", amount: "",
   description: "", transactionDate: formatDateInput(new Date()),
@@ -235,8 +244,17 @@ export default function TransactionsPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Jumlah (Rp)</Label>
-              <Input type="number" placeholder="0" value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })} className="text-lg font-bold" />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base font-bold text-muted-foreground">Rp</span>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={fmtRupiah(form.amount)}
+                  onChange={(e) => setForm({ ...form, amount: parseRupiah(e.target.value) })}
+                  className="text-lg font-bold pl-9"
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>Akun</Label>
