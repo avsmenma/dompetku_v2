@@ -42,14 +42,17 @@ export default function BudgetsPage() {
   });
 
   const loadData = useCallback(async (month: number, year: number) => {
-    const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const monthPrefix = `${year}-${String(month + 1).padStart(2, "0")}`;
+    const start = `${monthPrefix}-01`;
     const lastDay = new Date(year, month + 1, 0).getDate();
-    const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-    const [rawBudgets, cats, txs] = await Promise.all([
+    const end = `${monthPrefix}-${String(lastDay).padStart(2, "0")}`;
+    const [allBudgets, cats, txs] = await Promise.all([
       localDb.budgets.toArray(),
       localDb.categories.toArray(),
       localDb.transactions.where("transactionDate").between(start, end, true, true).toArray(),
     ]);
+    // Only show budgets whose startDate belongs to the selected month
+    const rawBudgets = allBudgets.filter(b => b.startDate.startsWith(monthPrefix));
     const catMap = Object.fromEntries(cats.map(c => [c.id!, c]));
     const spentMap: Record<number, number> = {};
     txs.filter(t => t.type === "expense" && t.categoryId).forEach(t => {
@@ -83,13 +86,15 @@ export default function BudgetsPage() {
   const handleSave = async () => {
     if (!form.categoryId || !form.limitAmount) return;
     setSaving(true);
+    const monthPrefix = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`;
+    const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     try {
       await localDb.budgets.add({
         categoryId: Number(form.categoryId),
         limitAmount: Number(form.limitAmount),
         period: form.period as "monthly" | "weekly",
-        startDate: form.startDate,
-        endDate: form.endDate,
+        startDate: `${monthPrefix}-01`,
+        endDate: `${monthPrefix}-${String(lastDay).padStart(2, "0")}`,
         createdAt: new Date().toISOString(),
       });
       setOpen(false);
@@ -117,11 +122,9 @@ export default function BudgetsPage() {
           <span className="text-xs font-semibold min-w-[100px] text-center">{BULAN[selectedMonth]} {selectedYear}</span>
           <button onClick={nextMonth} disabled={isCurrentMonth}
             className={`w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold ${isCurrentMonth ? "opacity-40" : ""}`}>›</button>
-          {isCurrentMonth && (
-            <Button onClick={() => setOpen(true)} size="sm" className="rounded-xl ml-1">
-              <Plus className="h-4 w-4 mr-1" /> Tambah
-            </Button>
-          )}
+          <Button onClick={() => setOpen(true)} size="sm" className="rounded-xl ml-1">
+            <Plus className="h-4 w-4 mr-1" /> Tambah
+          </Button>
         </div>
       </div>
 
