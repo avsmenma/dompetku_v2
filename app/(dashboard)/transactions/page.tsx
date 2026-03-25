@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, TrendingUp, TrendingDown, Loader2, ArrowUpDown } from "lucide-react";
+import { Plus, Trash2, TrendingUp, TrendingDown, Loader2, ArrowUpDown, CalendarDays } from "lucide-react";
 import { formatCurrency, formatDate, formatDateInput } from "@/lib/utils";
 import { localDb, type Account, type Category, type Transaction } from "@/lib/db/local";
 
@@ -150,9 +151,16 @@ export default function TransactionsPage() {
             </div>
           )}
         </div>
-        <Button onClick={openAdd} size="sm" className="rounded-xl">
-          <Plus className="h-4 w-4 mr-1" /> Tambah
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Link href="/transactions/pnl-calendar">
+            <Button variant="outline" size="icon" className="rounded-xl h-9 w-9">
+              <CalendarDays className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Button onClick={openAdd} size="sm" className="rounded-xl">
+            <Plus className="h-4 w-4 mr-1" /> Tambah
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-2 bg-muted p-1 rounded-xl">
